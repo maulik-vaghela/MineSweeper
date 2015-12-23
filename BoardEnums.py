@@ -1,13 +1,13 @@
 __author__ = 'schellu'
 
-class CellStatus():
+class CellStatus:
     # CellState - 0:Closed, 1:Opened, 2:Marked as mine, 3:Marked as suspected mine
     Closed = 0
     Opened = 1
     MarkedAsMine = 2
     MarkedAsSuspectedMine = 3
 
-class CellProperty():
+class CellProperty:
     # CellProperty - -1:Mine, 0:Empty, 1-8:AdjacentMineCount
     Mine = -1
     Empty = 0
@@ -20,7 +20,7 @@ class CellProperty():
     MineCountSeven = 7
     MineCountEight = 8
 
-class GameStatus():
+class GameStatus:
     # GameStatus - 0:GameLost (When User clicked cell is a Min) , 1:GameInProgress, 2:GameWon (When User has Marked all mines properly and opened all remaining cells)
     GameLost = 0
     GameInProgress = 1
