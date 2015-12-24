@@ -46,7 +46,5 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-# VSProject Files
-*.sln
-*.suo
-*.pyproj
+# User should store Visual Studio project files in this folder
+VSProject
