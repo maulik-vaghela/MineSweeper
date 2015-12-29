@@ -1,5 +1,5 @@
 """
-This file defines the various enums which will be shared by different modules.
+    This file contains Enum used for implementation of Minesweeper
 """
 
 class CellStatus(object):
@@ -56,3 +56,34 @@ class GameStatus(object):
 
     def __init__(self):
         pass
+class GridSize(object):
+    """
+    Gridsizes for all 3 levels
+      Beginner level     - 9x9
+      Intermediate level - 16x16
+      Expert level       - 16x30
+    """
+    BeginnerLength = 9
+    BeginnerWidth = 9
+    IntermediateLength = 16
+    IntermediateWidth = 16
+    ExpertLength = 16
+    ExpertWidth = 30
+
+    def __init__(self):
+        pass
+
+class DifficultyLevel(object):
+    """
+    Enum for Difficulty level
+      Beginner     - 1
+      intermediate - 2
+      Expert       - 3
+    """
+    BeginnerLevel = 1
+    IntermediateLevel = 2
+    ExpertLevel = 3
+
+    def __init__(self):
+        pass
+
