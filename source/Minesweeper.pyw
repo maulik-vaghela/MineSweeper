@@ -138,7 +138,7 @@ class BoardUI(QtGui.QWidget):
                 self.cell_grid_layout.addWidget(self.button_array[row][col], row, col)
         self.mines_lcd.display(str(self.remainingminecount))
         self.status_button.setIcon(QtGui.QIcon("icons/smiley1.ico"))
-        self.remainingtime = 999;
+        self.remainingtime = 999
         self.time_lcd.display(self.remainingtime)
         self.timer.start(1000)
 
