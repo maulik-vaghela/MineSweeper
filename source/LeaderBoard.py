@@ -1,73 +1,90 @@
-__author__ = 'kumarabh'
-
 import sys
+import os
 from PyQt4 import QtGui
 from PyQt4 import QtCore
+from BoardEnums import DifficultyLevel
 
-class LeaderBoard:
 
-     def storeScore(self, scoreDict):
-         """
-         This function will store score (along with other details such as rank and name) in a file, corresponding to selected game level, stored at persistent memory.
-         This function will take care of storing information in sorted order based on score, High score->Low score
-         :param scoreDict: a Dictionary in form of {'Level':'', 'Name':'', 'Score':''} Eg; {'Level':'Expert', 'Name':'Ak', 'Score':'20'}
-         :return: Save information in a file corresponding to selected game level (Beginner.txt OR Intermediate.txt OR Expert.txt)
-         """
-         index = 0
-         dataInserted = 0
-         fileObj = open(scoreDict['Level']+".txt", "a+")
-         fileData = fileObj.readlines()
-         fileObj.close()
+def insertNewScore(Level, PlayerName, Score):
+    """
+    This function will store score (along with other details such as rank and name) in a file, corresponding to selected game level, stored at persistent memory.
+    This function will take care of storing information in sorted order based on score, High score->Low score
+    :param DifficultyLevel: Beginner/Intermediate/Expert
+    :param PlayerName: Player name
+    :param Score: Score in seconds for the player
+    :return: Save information in a file corresponding to selected game level (Beginner.txt OR Intermediate.txt OR Expert.txt)
+    """
+    index = 0
+    file_name = ""
+    if Level == DifficultyLevel.BeginnerLevel:
+        file_name = "Beginner.txt"
+    elif Level == DifficultyLevel.IntermediateLevel:
+        file_name = "Intermediate.txt"
+    elif Level == DifficultyLevel.ExpertLevel:
+        file_name = "Expert.txt"
+    else:
+        print "Exception"
+        return
+    file_handle = open(file_name, "a+")
+    file_data = file_handle.readlines()
+    file_handle.close()
 
-         if fileData == []:
-            #if currently no data in file, insert new data as the first data at position 1
-             fileData.insert(0, "1"+'\t'+scoreDict['Name']+"\t"+scoreDict['Score']+"\n")
-         else:
-             #find the correct position for new data based on score. Insert new data at its correct position
-             for data in fileData:
-                 index = index+1
-                 if(scoreDict['Score'] > data.split()[2]):
-                     dataInserted = 1
-                     fileData.insert(index-1, str(index)+'\t'+scoreDict['Name']+"\t"+scoreDict['Score']+"\n")
-                     break
+    if file_data == []:
+        # if currently no data in file, insert new data as the first data at position 1
+        file_data.insert(0, "1" + '\t' + PlayerName + "\t" + str(Score) + '\n')
+    else:
+        # find the correct position for new data based on score. Insert new data at its correct position
+        for data in file_data:
+            print data
+            print data.split('\t')
+            index = index + 1
+            if (Score > data.split('\t')[2]):
+                file_data.insert(index - 1, str(index) + '\t' + PlayerName + "\t" + str(Score) + '\n')
+                break
+        else:
+            # Add the score at the end
+            print 'Adding at end'
+            file_data.insert(index, str(index + 1) + '\t' + PlayerName + "\t" + str(Score) + '\n')
 
-             if(dataInserted == 0):
-                 #if reach at the end of list and still new data left to be added, simply append new data at the end of list
-                 fileData.append(str(index+1)+'\t'+scoreDict['Name']+"\t"+scoreDict['Score']+"\n")
+    # Write all data back in file
+    file_handle = open(file_name, "w+")
 
-         #Write all data back in file
-         fileObj = open(scoreDict['Level']+".txt", "w+")
-         rank = 1 #Variable to keep track of rank/order while writing data back in file
-         for data in fileData:
-            #create list to writeback data in file. We want to re-write first column data based on rank calculated here
-             list = data.split()
-             fileObj.write(str(rank)+'\t'+list[1]+"\t"+list[2]+"\n")
-             rank = rank+1
-         fileObj.close()
+    # Variable to keep track of rank/order while writing data back in file
+    rank = 1
+    for data in file_data:
+        # create list to write back data in file.
+        # We want to re-write first column data based on rank calculated here.
+        file_handle.write(data)
+        rank = rank + 1
+        if rank > 10:
+            break
+    file_handle.close()
 
-     def readScore(self, level):
-        """
-        This function will retrieve scores for selected game level and will display these scores to user
-        :param level: Level of game (Beginner, Intermediate, Expert) for which score is required
-        :return: UI containing information of rank, name and score
-        """
-        fileObj  = open(level+".txt", "r+")
-        fileData = fileObj.read()
-        fileObj.close()
+def getTopScorersList(level):
+    """
+    This function will retrieve scores for selected game level and will display these scores to user
+    :param level: Level of game (Beginner, Intermediate, Expert) for which score is required
+    :return: The list of top scores for input level
+    """
+    file_name = ""
+    top_scores = []
+    if level == DifficultyLevel.ExpertLevel:
+        file_name = "Expert.txt"
+    elif level == DifficultyLevel.IntermediateLevel:
+        file_name = "Intermediate.txt"
+    elif level == DifficultyLevel.BeginnerLevel:
+        file_name = "Beginner.txt"
+    else:
+        return top_scores
 
-        win  = QtGui.QWidget()
+    file_existence = os.path.exists(file_name)
 
-        info_layout = QtGui.QHBoxLayout()
-        info_layout.addWidget(QtGui.QLabel("<b>"+ str(level) + " Level Ranking and Scores</b>"+"<br>"))
+    # If file does not exist return empty list
+    if file_existence is False:
+        return top_scores
 
-        score_layout = QtGui.QGridLayout()
-        score_layout.addWidget(QtGui.QLabel(fileData), 0, 0)
+    file_handle = open(file_name, "r+")
+    top_scores = file_handle.readlines()
+    file_handle.close()
 
-        main_layout = QtGui.QVBoxLayout()
-        main_layout.addLayout(info_layout)
-        main_layout.addLayout(score_layout)
-
-        win.setLayout(main_layout)
-        win.setGeometry(100,100,200,100)
-        win.setWindowTitle("Leader Board")
-        win.show()
+    return top_scores

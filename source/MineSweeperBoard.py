@@ -83,19 +83,20 @@ class Board:
             print self.cell_property[i]
         return
 
-    def opencell(self, row, column, cell_list):
+    def opencell(self, row, column):
         '''
         :param row:
         :param column:
         :return: List of cells to be opened
         '''
+        cell_list = []
         if (row < 0) or (row >= self.rows) or (column < 0) or (column >= self.columns):
-            return
+            return cell_list
 
         #if cell status is already opened or suspected mine it can not be opened??
         if (self.cell_status[row][column] == CellStatus.Opened) or \
             (self.cell_status[row][column] == CellStatus.MarkedAsMine):
-            return
+            return cell_list
 
         #set the Cell Status to Opened and add it to CellList to be returned
         self.cell_status[row][column] = CellStatus.Opened
@@ -113,21 +114,22 @@ class Board:
         '''
         if self.cell_property[row][column] == CellProperty.Empty:
             if (row-1 >= 0) and (column-1 >= 0):
-                self.opencell(row-1, column-1, cell_list)
+                cell_list.extend(self.opencell(row-1, column-1))
             if row-1 >= 0:
-                self.opencell(row-1, column, cell_list)
+                cell_list.extend(self.opencell(row-1, column))
             if (row-1 >= 0) and (column+1 < self.columns):
-                self.opencell(row-1, column+1, cell_list)
+                cell_list.extend(self.opencell(row-1, column+1))
             if column+1 < self.columns:
-                self.opencell(row, column+1, cell_list)
+                cell_list.extend(self.opencell(row, column+1))
             if (row+1 < self.rows) and (column+1 < self.columns):
-                self.opencell(row+1, column+1, cell_list)
+                cell_list.extend(self.opencell(row+1, column+1))
             if column-1 >= 0:
-                self.opencell(row, column-1, cell_list)
+                cell_list.extend(self.opencell(row, column-1))
             if row+1 < self.rows:
-                self.opencell(row+1, column, cell_list)
+                cell_list.extend(self.opencell(row+1, column))
             if (row+1 < self.rows) and (column-1 >= 0):
-                self.opencell(row+1, column-1, cell_list)
+                cell_list.extend(self.opencell(row+1, column-1))
+        return cell_list
 
     def setcellstatus(self, row, column, status):
         if (row < 0) or (row >= self.rows) or (column < 0) or (column >= self.columns):
@@ -153,9 +155,9 @@ class Board:
 
         #increase or decrease current mine count based on New Set Status
         if status == CellStatus.MarkedAsMine:
-            self.current_mine_count = self.current_mine_count + 1
-        elif status == CellStatus.MarkedAsSuspectedMine:
             self.current_mine_count = self.current_mine_count - 1
+        elif status == CellStatus.MarkedAsSuspectedMine:
+            self.current_mine_count = self.current_mine_count + 1
 
         return status
 
@@ -177,14 +179,13 @@ class Board:
         if self.cell_property[self.last_clicked_row][self.last_clicked_column] == CellProperty.Mine:
             return GameStatus.GameLost
 
-        if self.current_mine_count != 0:
-            return GameStatus.GameNotComplete
-        else:
-            #if currentminecount is zero, then Game is not complete until all cells are opened
-            for row in range(self.rows):
-                for col in range(self.columns):
-                    if self.cell_status[row][col] == CellStatus.Closed:
-                        return GameStatus.GameNotComplete
+        print 'Remaining mine count:', self.current_mine_count
+        for row in range(self.rows):
+            for col in range(self.columns):
+                if self.cell_property[row][col] == CellProperty.Mine:
+                    continue
+                if self.cell_status[row][col] == CellStatus.Closed:
+                    return GameStatus.GameNotComplete
 
         return GameStatus.GameWon
 

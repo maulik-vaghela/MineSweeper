@@ -4,12 +4,13 @@ Main implementation file for Minesweeper
 
 import sys
 import functools
-import random
 import os.path
 
 from PyQt4 import QtCore
 from PyQt4 import QtGui
-from BoardEnums import GridSize, DifficultyLevel
+import MineSweeperBoard
+import LeaderBoard
+from BoardEnums import GridSize, DifficultyLevel, CellStatus, CellProperty, GameStatus
 
 CURRENT_GAME_LEVEL = 0
 
@@ -20,19 +21,23 @@ def get_grid_size(game_level):
     """
     grid_length = 0
     grid_width = 0
+    minecount = 0
     if game_level == DifficultyLevel.BeginnerLevel:
         grid_length = GridSize.BeginnerLength
         grid_width = GridSize.BeginnerWidth
+        minecount = 10
 
     elif game_level == DifficultyLevel.IntermediateLevel:
         grid_length = GridSize.IntermediateLength
         grid_width = GridSize.IntermediateWidth
+        minecount = 40
 
     elif game_level == DifficultyLevel.ExpertLevel:
         grid_length = GridSize.ExpertLength
         grid_width = GridSize.ExpertWidth
+        minecount = 99
 
-    return (grid_length, grid_width)
+    return (grid_length, grid_width, minecount)
 
 
 class BoardUI(QtGui.QWidget):
@@ -40,60 +45,50 @@ class BoardUI(QtGui.QWidget):
     This class implements the cell UI. Each cell is referenced by [row][col]
     """
 
-    def __init__(self, rows=10, cols=10, parent=None):
+    def __init__(self, rows=10, cols=10, minecount=10, parent=None):
         super(BoardUI, self).__init__(parent)
         self.rows = rows
         self.cols = cols
+        self.minecount = minecount
+        self.remainingminecount = self.minecount
         self.cell_size = 25
-        button_array = [[QtGui.QPushButton() \
+        self.board = MineSweeperBoard.Board(self.rows, self.cols, self.minecount)
+        self.button_array = [[QtGui.QPushButton() \
                          for col in range(self.cols)] for row in range(self.rows)]
+        self.GameInProgress = True
 
-        cell_grid_layout = QtGui.QGridLayout()
+        self.cell_grid_layout = QtGui.QGridLayout()
 
         for row in range(self.rows):
             for col in range(self.cols):
-                button_array[row][col].setFixedSize(self.cell_size, self.cell_size)
-                button_array[row][col].setIcon(QtGui.QIcon("icons/unopenedsquare.png"))
-                button_array[row][col].setIconSize(QtCore.QSize(self.cell_size, self.cell_size))
+                self.button_array[row][col].setFixedSize(self.cell_size, self.cell_size)
+                self.button_array[row][col].setIcon(QtGui.QIcon("icons/unopenedsquare.png"))
+                self.button_array[row][col].setIconSize(QtCore.QSize(self.cell_size,\
+                                                                     self.cell_size))
+                self.button_array[row][col].clicked.connect(self.handle_left_click)
+                self.button_array[row][col].setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+                self.button_array[row][col].customContextMenuRequested.connect(\
+                    self.handle_right_click)
+                self.cell_grid_layout.addWidget(self.button_array[row][col], row, col)
 
-                cell_grid_layout.addWidget(button_array[row][col], row, col)
-
-        # Simulation for mock UI
-        for row in range(self.rows):
-            # Disable couple of buttons for demo to simulate empty cells
-            col = random.choice(range(self.cols))
-            button_array[row][col].setIcon(QtGui.QIcon())
-
-            # Simulate mines
-            col = random.choice(range(self.cols))
-            button_array[row][col].setIcon(QtGui.QIcon("icons/mine.ico"))
-            # button_array[x][y].setStyleSheet("background-color: grey")
-
-            # Simulate mine flags
-            col = random.choice(range(self.cols))
-            button_array[row][col].setIcon(QtGui.QIcon("icons/Flag.png"))
-
-            # Simulate suspected mine flags
-            col = random.choice(range(self.cols))
-            button_array[row][col].setIcon(QtGui.QIcon("icons/questionmark.png"))
-
-        cell_grid_layout.setSpacing(0)
+        self.cell_grid_layout.setSpacing(0)
 
         status_widget_layout = QtGui.QHBoxLayout()
 
-        mines_lcd = QtGui.QLCDNumber(3)
-        mines_lcd.setSegmentStyle(QtGui.QLCDNumber.Flat)
-        mines_lcd.setStyleSheet("background-color:black; color:red")
-        status_widget_layout.addWidget(mines_lcd)
+        self.mines_lcd = QtGui.QLCDNumber(3)
+        self.mines_lcd.setSegmentStyle(QtGui.QLCDNumber.Flat)
+        self.mines_lcd.setStyleSheet("background-color:black; color:red")
+        self.mines_lcd.display(str(self.remainingminecount))
+        status_widget_layout.addWidget(self.mines_lcd)
 
         status_widget_layout.addStretch()
 
-        status_button = QtGui.QPushButton()
-        status_button.setFixedSize(50, 50)
-        status_button.setIcon(QtGui.QIcon("icons/smiley1.ico"))
-        # status_button.setIconSize(QSize(50, 50))
-        status_button.setIconSize(status_button.sizeHint())
-        status_widget_layout.addWidget(status_button)
+        self.status_button = QtGui.QPushButton()
+        self.status_button.setFixedSize(50, 50)
+        self.status_button.setIcon(QtGui.QIcon("icons/smiley1.ico"))
+        self.status_button.setIconSize(self.status_button.sizeHint())
+        self.status_button.clicked.connect(self.resetGrid)
+        status_widget_layout.addWidget(self.status_button)
 
         status_widget_layout.addStretch()
 
@@ -104,10 +99,129 @@ class BoardUI(QtGui.QWidget):
 
         main_layout = QtGui.QVBoxLayout()
         main_layout.addLayout(status_widget_layout)
-        main_layout.addLayout(cell_grid_layout)
+        main_layout.addLayout(self.cell_grid_layout)
 
         self.setLayout(main_layout)
 
+    def resetGrid(self):
+        self.remainingminecount = self.minecount
+        self.board = MineSweeperBoard.Board(self.rows, self.cols, self.minecount)
+        self.button_array = [[QtGui.QPushButton() \
+                         for col in range(self.cols)] for row in range(self.rows)]
+        self.GameInProgress = True
+        for row in range(self.rows):
+            for col in range(self.cols):
+                self.button_array[row][col].setFixedSize(self.cell_size, self.cell_size)
+                self.button_array[row][col].setIcon(QtGui.QIcon("icons/unopenedsquare.png"))
+                self.button_array[row][col].setIconSize(QtCore.QSize(self.cell_size,\
+                                                                     self.cell_size))
+                self.button_array[row][col].clicked.connect(self.handle_left_click)
+                self.button_array[row][col].setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+                self.button_array[row][col].customContextMenuRequested.connect(\
+                    self.handle_right_click)
+                self.cell_grid_layout.addWidget(self.button_array[row][col], row, col)
+        self.mines_lcd.display(str(self.remainingminecount))
+        self.status_button.setIcon(QtGui.QIcon("icons/smiley1.ico"))
+
+    def handle_left_click(self):
+        '''
+        This function handles the left click action on each of the grid cell.
+        It will also handle the actions required
+        :return: None
+        '''
+        if (self.GameInProgress == False):
+            return
+        sender = self.sender()
+        row = 0
+        col = 0
+        for row in range(self.rows):
+            for col in range(self.cols):
+                if self.button_array[row][col] == sender:
+                    break
+            else:
+                continue
+            break
+        print 'Received left click:', row, ',', col
+        celllist = self.board.opencell(row, col)
+        if celllist == []:
+            return
+        for cell in celllist:
+            row = cell[0]
+            col = cell[1]
+            property = self.board.getcellproperty(row, col)
+            if property == CellProperty.Empty:
+                self.button_array[row][col].setIcon(QtGui.QIcon())
+            elif property == CellProperty.Mine:
+                # Game over
+                for row in range(self.rows):
+                    for col in range(self.cols):
+                        property = self.board.getcellproperty(row, col)
+                        if property == CellProperty.Mine:
+                            self.button_array[row][col].setIcon(QtGui.QIcon("icons/mine.ico"))
+                self.status_button.setIcon(QtGui.QIcon("icons/smiley3.ico"))
+                self.GameInProgress = False
+                return
+            elif property == CellProperty.MineCountOne:
+                self.button_array[row][col].setIcon(QtGui.QIcon("icons/1.png"))
+            elif property == CellProperty.MineCountTwo:
+                self.button_array[row][col].setIcon(QtGui.QIcon("icons/2.png"))
+            elif property == CellProperty.MineCountThree:
+                self.button_array[row][col].setIcon(QtGui.QIcon("icons/3.png"))
+            elif property == CellProperty.MineCountFour:
+                self.button_array[row][col].setIcon(QtGui.QIcon("icons/4.png"))
+            elif property == CellProperty.MineCountFive:
+                self.button_array[row][col].setIcon(QtGui.QIcon("icons/5.png"))
+            elif property == CellProperty.MineCountSix:
+                self.button_array[row][col].setIcon(QtGui.QIcon("icons/6.png"))
+            elif property == CellProperty.MineCountSeven:
+                self.button_array[row][col].setIcon(QtGui.QIcon("icons/7.png"))
+            elif property == CellProperty.MineCountEight:
+                self.button_array[row][col].setIcon(QtGui.QIcon("icons/8.png"))
+
+        game_status = self.board.continuegame()
+        print 'Game Status:', game_status
+        if game_status == GameStatus.GameWon:
+            self.GameInProgress = False
+            player_name, ok = QtGui.QInputDialog.getText(self, "Name Please !!", "Enter your name for leader board:")
+            # TODO: Replace 1 with the time taken by the end user.
+            LeaderBoard.insertNewScore(CURRENT_GAME_LEVEL, player_name, 1)
+            self.status_button.setIcon(QtGui.QIcon("icons/smiley.ico"))
+            print "You have won the game"
+
+    def handle_right_click(self):
+        '''
+        This function handles the right click action on grid cell.
+        :return: None
+        '''
+        if (self.GameInProgress == False):
+            return
+        sender = self.sender()
+        row = 0
+        col = 0
+        for row in range(self.rows):
+            for col in range(self.cols):
+                if self.button_array[row][col] == sender:
+                    break
+            else:
+                continue
+            break
+        print 'Received right click:', row, ',', col
+        status = self.board.getcellstatus(row, col)
+        if status == CellStatus.Opened:
+            return
+        elif status == CellStatus.Closed:
+            self.remainingminecount = self.remainingminecount - 1
+            self.mines_lcd.display(str(self.remainingminecount))
+            self.board.setcellstatus(row, col, CellStatus.MarkedAsMine)
+            self.button_array[row][col].setIcon(QtGui.QIcon("icons/Flag.png"))
+        elif status == CellStatus.MarkedAsMine:
+            self.remainingminecount = self.remainingminecount + 1
+            self.mines_lcd.display(str(self.remainingminecount))
+            self.board.setcellstatus(row, col, CellStatus.MarkedAsSuspectedMine)
+            self.button_array[row][col].setIcon(QtGui.QIcon("icons/questionmark.png"))
+        elif status == CellStatus.MarkedAsSuspectedMine:
+            self.board.setcellstatus(row, col, CellStatus.Closed)
+            self.button_array[row][col].setIcon(QtGui.QIcon("icons/unopenedsquare.png"))
 
 class GameUI(QtGui.QMainWindow):
     """
@@ -115,10 +229,8 @@ class GameUI(QtGui.QMainWindow):
     This is responsible for menus, game board, status bars.
     """
 
-    def __init__(self, rows, cols, parent=None):
+    def __init__(self, rows, cols, minecount, parent=None):
         super(GameUI, self).__init__(parent)
-        self.rows = rows
-        self.cols = cols
 
         # prevent resize of main window
         self.setFixedSize(self.sizeHint())
@@ -126,7 +238,7 @@ class GameUI(QtGui.QMainWindow):
         # prevent reaction to maximize button
         self.setWindowFlags(QtCore.Qt.WindowMinimizeButtonHint)
 
-        main_widget = BoardUI(self.rows, self.cols, self)
+        main_widget = BoardUI(rows, cols, minecount, self)
 
         # Add menu bar
         self.add_menu_bar()
@@ -185,6 +297,21 @@ class GameUI(QtGui.QMainWindow):
                                 "to make sure whether its mine or not.<br><br>"
                                 "Enjoy the game :) <br>")
 
+    def showTopScores(self):
+        top_scores = LeaderBoard.getTopScorersList(CURRENT_GAME_LEVEL)
+        print top_scores
+        level_string = ""
+        if CURRENT_GAME_LEVEL == DifficultyLevel.ExpertLevel:
+            level_string = "Expert level"
+        elif CURRENT_GAME_LEVEL == DifficultyLevel.BeginnerLevel:
+            level_string = "Beginner level"
+        else:
+            level_string = "Intermediate level"
+        leaderboard = "Rank\tName\tScore\n"
+        for score in top_scores:
+            leaderboard = leaderboard + score
+        QtGui.QMessageBox.about(self, "Leaderboard for " + level_string, leaderboard)
+
     def add_menu_bar(self):
         """
             This function will add menu bar to the GUI.
@@ -195,19 +322,19 @@ class GameUI(QtGui.QMainWindow):
         beginner_level_action = QtGui.QAction(QtGui.QIcon(""), '&Beginner', self)
         beginner_level_action.setShortcut('Ctrl+B')
         beginner_level_action.setStatusTip('Set difficulty level to "Beginner" ')
-        beginner_level_action.triggered.connect(functools.partial(self.change_game_level, 1))
+        beginner_level_action.triggered.connect(functools.partial(self.change_game_level, DifficultyLevel.BeginnerLevel))
 
         # File menu option to change difficulty level
         intermediate_level_action = QtGui.QAction(QtGui.QIcon(""), '&Intermediate', self)
         intermediate_level_action.setShortcut('Ctrl+I')
         intermediate_level_action.setStatusTip('Set difficulty level to "Intermediate" ')
-        intermediate_level_action.triggered.connect(functools.partial(self.change_game_level, 2))
+        intermediate_level_action.triggered.connect(functools.partial(self.change_game_level, DifficultyLevel.IntermediateLevel))
 
         # File menu option to change difficulty level
         expert_level_action = QtGui.QAction(QtGui.QIcon(""), '&Expert', self)
         expert_level_action.setShortcut('Ctrl+E')
         expert_level_action.setStatusTip('Set difficulty level to "Expert" ')
-        expert_level_action.triggered.connect(functools.partial(self.change_game_level, 3))
+        expert_level_action.triggered.connect(functools.partial(self.change_game_level, DifficultyLevel.ExpertLevel))
 
         # File menu option "About" which gives information about game
         about_game_action = QtGui.QAction(QtGui.QIcon(""), '&About', self)
@@ -222,11 +349,10 @@ class GameUI(QtGui.QMainWindow):
         game_help_action.triggered.connect(self.game_help)
 
         # File Menu option to view the score.
-        # TODO : Change function call after Leaderboard implementation.
         view_leaderboard_action = QtGui.QAction(QtGui.QIcon(""), '&View Score', self)
         view_leaderboard_action.setShortcut('Ctrl+V')
         view_leaderboard_action.setStatusTip("View current game's leader board")
-        view_leaderboard_action.triggered.connect(QtGui.QApplication.quit)
+        view_leaderboard_action.triggered.connect(self.showTopScores)
 
         # File Menu option for exit the game.
         exit_game_action = QtGui.QAction(QtGui.QIcon("exit.png"), '&Exit', self)
@@ -273,17 +399,20 @@ class GameUI(QtGui.QMainWindow):
         if change_level == DifficultyLevel.BeginnerLevel:
             grid_length = GridSize.BeginnerLength
             grid_width = GridSize.BeginnerWidth
+            minecount = 10
 
         elif change_level == DifficultyLevel.IntermediateLevel:
             grid_length = GridSize.IntermediateLength
             grid_width = GridSize.IntermediateWidth
+            minecount = 40
 
         elif change_level == DifficultyLevel.ExpertLevel:
             grid_length = GridSize.ExpertLength
             grid_width = GridSize.ExpertWidth
+            minecount = 99
 
         self.close()
-        self.__init__(grid_length, grid_width)
+        self.__init__(grid_length, grid_width, minecount)
 
 
 def main():
@@ -310,11 +439,10 @@ def main():
 
     # save current game level in global which can be used by others.
     CURRENT_GAME_LEVEL = level
-    (length, width) = get_grid_size(level)
+    (length, width, minecount) = get_grid_size(level)
 
-    GameUI(length, width)
+    GameUI(length, width, minecount)
     sys.exit(app.exec_())
-
 
 if __name__ == '__main__':
     main()
