@@ -1,26 +1,28 @@
-import sys
+"""
+This module defines the API related to leaderboard handling.
+"""
+
 import os
-from PyQt4 import QtGui
-from PyQt4 import QtCore
 from BoardEnums import DifficultyLevel
 
-
-def insertNewScore(Level, PlayerName, Score):
+def insertnewscore(level, player_name, score):
     """
-    This function will store score (along with other details such as rank and name) in a file, corresponding to selected game level, stored at persistent memory.
-    This function will take care of storing information in sorted order based on score, High score->Low score
+    This function will store score (along with other details such as rank and name) in a file,
+    corresponding to selected game level, stored at persistent memory.
+    This function will take care of storing information in sorted order based on score,
+    High score->Low score
     :param DifficultyLevel: Beginner/Intermediate/Expert
-    :param PlayerName: Player name
-    :param Score: Score in seconds for the player
-    :return: Save information in a file corresponding to selected game level (Beginner.txt OR Intermediate.txt OR Expert.txt)
+    :param player_name: Player name
+    :param score: Score in seconds for the player
+    :return: None
     """
     index = 0
     file_name = ""
-    if Level == DifficultyLevel.BeginnerLevel:
+    if level == DifficultyLevel.BeginnerLevel:
         file_name = "Beginner.txt"
-    elif Level == DifficultyLevel.IntermediateLevel:
+    elif level == DifficultyLevel.IntermediateLevel:
         file_name = "Intermediate.txt"
-    elif Level == DifficultyLevel.ExpertLevel:
+    elif level == DifficultyLevel.ExpertLevel:
         file_name = "Expert.txt"
     else:
         print "Exception"
@@ -31,20 +33,20 @@ def insertNewScore(Level, PlayerName, Score):
 
     if file_data == []:
         # if currently no data in file, insert new data as the first data at position 1
-        file_data.insert(0, "1" + '\t' + PlayerName + "\t" + str(Score) + '\n')
+        file_data.insert(0, "1" + '\t' + player_name + "\t" + str(score) + '\n')
     else:
-        # find the correct position for new data based on score. Insert new data at its correct position
+        # find the correct position for new data based on score.
+        # Insert new data at its correct position
         for data in file_data:
-            print data
-            print data.split('\t')
             index = index + 1
-            if (Score > data.split('\t')[2]):
-                file_data.insert(index - 1, str(index) + '\t' + PlayerName + "\t" + str(Score) + '\n')
+            if score > data.split('\t')[2]:
+                file_data.insert(index - 1, str(index) + '\t' + player_name\
+                                 + "\t" + str(score) + '\n')
                 break
         else:
             # Add the score at the end
-            print 'Adding at end'
-            file_data.insert(index, str(index + 1) + '\t' + PlayerName + "\t" + str(Score) + '\n')
+            file_data.insert(index, str(index + 1) + '\t' + player_name\
+                             + "\t" + str(score) + '\n')
 
     # Write all data back in file
     file_handle = open(file_name, "w+")
@@ -60,7 +62,7 @@ def insertNewScore(Level, PlayerName, Score):
             break
     file_handle.close()
 
-def getTopScorersList(level):
+def gettopscorerslist(level):
     """
     This function will retrieve scores for selected game level and will display these scores to user
     :param level: Level of game (Beginner, Intermediate, Expert) for which score is required
