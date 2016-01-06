@@ -56,8 +56,9 @@ class BoardUI(QtGui.QWidget):
         self.button_array = [[QtGui.QPushButton() \
                          for col in range(self.cols)] for row in range(self.rows)]
         self.game_in_progress = True
-
+        self.timer = QtCore.QTimer()
         self.cell_grid_layout = QtGui.QGridLayout()
+        self.remainingtime = 999
 
         for row in range(self.rows):
             for col in range(self.cols):
@@ -92,16 +93,27 @@ class BoardUI(QtGui.QWidget):
 
         status_widget_layout.addStretch()
 
-        time_lcd = QtGui.QLCDNumber(3)
-        time_lcd.setSegmentStyle(QtGui.QLCDNumber.Flat)
-        time_lcd.setStyleSheet("background-color:black; color:red")
-        status_widget_layout.addWidget(time_lcd)
+        self.time_lcd = QtGui.QLCDNumber(3)
+        self.time_lcd.setSegmentStyle(QtGui.QLCDNumber.Flat)
+        self.time_lcd.setStyleSheet("background-color:black; color:red")
+        self.time_lcd.display(self.remainingtime)
+        status_widget_layout.addWidget(self.time_lcd)
 
         main_layout = QtGui.QVBoxLayout()
         main_layout.addLayout(status_widget_layout)
         main_layout.addLayout(self.cell_grid_layout)
 
         self.setLayout(main_layout)
+        self.timer.timeout.connect(self.timer_change)
+        self.timer.start(1000)
+
+    def timer_change(self):
+        """
+        This function updates the timer lcd
+        :return: None
+        """
+        self.remainingtime -= 1
+        self.time_lcd.display(self.remainingtime)
 
     def resetgrid(self):
         """
@@ -126,6 +138,9 @@ class BoardUI(QtGui.QWidget):
                 self.cell_grid_layout.addWidget(self.button_array[row][col], row, col)
         self.mines_lcd.display(str(self.remainingminecount))
         self.status_button.setIcon(QtGui.QIcon("icons/smiley1.ico"))
+        self.remainingtime = 999;
+        self.time_lcd.display(self.remainingtime)
+        self.timer.start(1000)
 
     def handle_left_click(self):
         '''
@@ -164,6 +179,7 @@ class BoardUI(QtGui.QWidget):
                             self.button_array[row][col].setIcon(QtGui.QIcon("icons/mine.ico"))
                 self.status_button.setIcon(QtGui.QIcon("icons/smiley3.ico"))
                 self.game_in_progress = False
+                self.timer.stop()
                 return
             elif cell_property == CellProperty.MineCountOne:
                 self.button_array[row][col].setIcon(QtGui.QIcon("icons/1.png"))
@@ -185,11 +201,12 @@ class BoardUI(QtGui.QWidget):
         game_status = self.board.continuegame()
         print 'Game Status:', game_status
         if game_status == GameStatus.GameWon:
+            self.timer.stop()
             self.game_in_progress = False
             player_name = QtGui.QInputDialog.getText(self, "Name Please !!",\
                                                          "Enter your name for leader board:")
             # TODO: Replace 1 with the time taken by the end user.
-            LeaderBoard.insertnewscore(CURRENT_GAME_LEVEL, player_name[0], 1)
+            LeaderBoard.insertnewscore(CURRENT_GAME_LEVEL, player_name[0], 999 - self.remainingtime)
             self.status_button.setIcon(QtGui.QIcon("icons/smiley.ico"))
             print "You have won the game"
 
