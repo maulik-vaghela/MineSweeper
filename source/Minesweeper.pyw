@@ -5,12 +5,13 @@ Main implementation file for Minesweeper
 import sys
 import functools
 import random
+import os.path
 
 from PyQt4 import QtCore
 from PyQt4 import QtGui
 from BoardEnums import GridSize, DifficultyLevel
 
-current_game_level = 0
+CURRENT_GAME_LEVEL = 0
 
 def get_grid_size(game_level):
     """
@@ -263,10 +264,11 @@ class GameUI(QtGui.QMainWindow):
             When user clicks on change game level from File menu
             this function will change height and width of grid.
         """
+        global CURRENT_GAME_LEVEL
         file_object = open("Level.txt", "w")
         file_object.write(str(change_level))
         file_object.close()
-        current_game_level = change_level
+        CURRENT_GAME_LEVEL = change_level
 
         if change_level == DifficultyLevel.BeginnerLevel:
             grid_length = GridSize.BeginnerLength
@@ -289,13 +291,25 @@ def main():
     This is the main function.
     :return: None
     """
+    global CURRENT_GAME_LEVEL
     app = QtGui.QApplication(sys.argv)
-    file_object = open("Level.txt", "r")
-    level = int(file_object.read())
-    file_object.close()
+
+    file_existence = os.path.exists("Level.txt")
+
+    # If file exist read level from file to restore previous level.
+    if file_existence is True:
+        file_object = open("Level.txt", "r")
+        level = int(file_object.read())
+        file_object.close()
+    # If file doesn't exist, assume default level as beginner and start game.
+    else:
+        file_object = open("Level.txt", "w")
+        level = DifficultyLevel.BeginnerLevel
+        file_object.write(str(level))
+        file_object.close()
 
     # save current game level in global which can be used by others.
-    current_game_level = level
+    CURRENT_GAME_LEVEL = level
     (length, width) = get_grid_size(level)
 
     GameUI(length, width)
