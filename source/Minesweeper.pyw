@@ -3,10 +3,36 @@ Main implementation file for Minesweeper
 """
 
 import sys
+import functools
 import random
 
 from PyQt4 import QtCore
 from PyQt4 import QtGui
+from BoardEnums import GridSize, DifficultyLevel
+
+current_game_level = 0
+
+def get_grid_size(game_level):
+    """
+    This function will return Grid size of UI based on difficulty level.
+    :rtype : Width and length of the UI
+    """
+    grid_length = 0
+    grid_width = 0
+    if game_level == DifficultyLevel.BeginnerLevel:
+        grid_length = GridSize.BeginnerLength
+        grid_width = GridSize.BeginnerWidth
+
+    elif game_level == DifficultyLevel.IntermediateLevel:
+        grid_length = GridSize.IntermediateLength
+        grid_width = GridSize.IntermediateWidth
+
+    elif game_level == DifficultyLevel.ExpertLevel:
+        grid_length = GridSize.ExpertLength
+        grid_width = GridSize.ExpertWidth
+
+    return (grid_length, grid_width)
+
 
 class BoardUI(QtGui.QWidget):
     """
@@ -81,15 +107,15 @@ class BoardUI(QtGui.QWidget):
 
         self.setLayout(main_layout)
 
+
 class GameUI(QtGui.QMainWindow):
     """
     This class defines the Main Window class for the game.
     This is responsible for menus, game board, status bars.
     """
 
-    def __init__(self, rows=10, cols=10, parent=None):
+    def __init__(self, rows, cols, parent=None):
         super(GameUI, self).__init__(parent)
-
         self.rows = rows
         self.cols = cols
 
@@ -101,7 +127,10 @@ class GameUI(QtGui.QMainWindow):
 
         main_widget = BoardUI(self.rows, self.cols, self)
 
+        # Add menu bar
+        self.add_menu_bar()
         status_bar = self.statusBar()
+
         status_bar.showMessage("Ready")
         # remove resizing grip from the main window
         status_bar.setSizeGripEnabled(False)
@@ -110,14 +139,168 @@ class GameUI(QtGui.QMainWindow):
         self.setWindowTitle("Minesweeper")
         self.show()
 
+    def about(self):
+        """
+        This function displays information about game.
+        This function just displays game version and basic info about game.
+        :return: VOID
+        """
+        QtGui.QMessageBox.about(self, "About Menu",
+                                "MineSweeper 1.0 \n"
+                                "This is python implementation of famous Minesweeper Game \n\n"
+                                "For Source code, check following link:\n"
+                                "https://github.com/maulik-vaghela/MineSweeper\n\n"
+                                "Enjoy the game :) \n")
+
+    def game_help(self):
+        """
+        This function displays help about game
+        This function will pop up message box to user
+        It will display following contents:
+        1. how to play game
+        2. Hints and tips
+        :return: VOID
+        """
+        QtGui.QMessageBox.about(self, "How to Play game",
+                                "<b>How to Play</b><br>"
+                                "The rules in Minesweeper are simple:<br><br>"
+                                "<b>1.</b> Uncover a mine and that's end of game <br>"
+                                "<b>2.</b> Uncover empty cell and "
+                                "it opens surrounding empty cells too<br>"
+                                "<b>3.</b> Uncover a number "
+                                "and it tells you how many mines are hidden in"
+                                "surrounding 8 cells.<br>"
+                                "<b>4.</b> Use this information to "
+                                "deduce which squares are safe to click.<br>"
+                                "<b>5.</b> Uncover all cells and "
+                                "mark cells with mine to win the game <br><br>"
+
+                                "<b>Hints</b> <br>"
+                                "<b>1.Mark as Mine </b> <br>"
+                                "   If you suspect that cell as mine, "
+                                "right click twice to put a question mark.<br>"
+                                "<b>2.Study surrounding cells </b><br>"
+                                "  Study all neighbour cells before opening any cell"
+                                "to make sure whether its mine or not.<br><br>"
+                                "Enjoy the game :) <br>")
+
+    def add_menu_bar(self):
+        """
+            This function will add menu bar to the GUI.
+            First we'll define all the actions which are required inside menu.
+            Then we'll create menu bar and add menu's and actions.
+        """
+        # File menu option to change difficulty level
+        beginner_level_action = QtGui.QAction(QtGui.QIcon(""), '&Beginner', self)
+        beginner_level_action.setShortcut('Ctrl+B')
+        beginner_level_action.setStatusTip('Set difficulty level to "Beginner" ')
+        beginner_level_action.triggered.connect(functools.partial(self.change_game_level, 1))
+
+        # File menu option to change difficulty level
+        intermediate_level_action = QtGui.QAction(QtGui.QIcon(""), '&Intermediate', self)
+        intermediate_level_action.setShortcut('Ctrl+I')
+        intermediate_level_action.setStatusTip('Set difficulty level to "Intermediate" ')
+        intermediate_level_action.triggered.connect(functools.partial(self.change_game_level, 2))
+
+        # File menu option to change difficulty level
+        expert_level_action = QtGui.QAction(QtGui.QIcon(""), '&Expert', self)
+        expert_level_action.setShortcut('Ctrl+E')
+        expert_level_action.setStatusTip('Set difficulty level to "Expert" ')
+        expert_level_action.triggered.connect(functools.partial(self.change_game_level, 3))
+
+        # File menu option "About" which gives information about game
+        about_game_action = QtGui.QAction(QtGui.QIcon(""), '&About', self)
+        about_game_action.setShortcut('Ctrl+A')
+        about_game_action.setStatusTip("Show Application's ABOUT box")
+        about_game_action.triggered.connect(self.about)
+
+        # File menu option "About" which gives information about game
+        game_help_action = QtGui.QAction(QtGui.QIcon(""), '&Help', self)
+        game_help_action.setShortcut('Ctrl+H')
+        game_help_action.setStatusTip("Show game's help")
+        game_help_action.triggered.connect(self.game_help)
+
+        # File Menu option to view the score.
+        # TODO : Change function call after Leaderboard implementation.
+        view_leaderboard_action = QtGui.QAction(QtGui.QIcon(""), '&View Score', self)
+        view_leaderboard_action.setShortcut('Ctrl+V')
+        view_leaderboard_action.setStatusTip("View current game's leader board")
+        view_leaderboard_action.triggered.connect(QtGui.QApplication.quit)
+
+        # File Menu option for exit the game.
+        exit_game_action = QtGui.QAction(QtGui.QIcon("exit.png"), '&Exit', self)
+        exit_game_action.setShortcut('Ctrl+Q')
+        exit_game_action.setStatusTip('Exit application')
+        exit_game_action.triggered.connect(QtGui.QApplication.quit)
+
+        # create a menu bar and we need to add 2 menus
+        # 1. File and 2. Help
+        menubar = self.menuBar()
+        file_menu = menubar.addMenu('&File')
+        help_menu = menubar.addMenu('&Help')
+
+        # Inside File menu create a submenu to change gane level
+        # This sub menu has 3 actions (3 levels to choose from)
+        change_level_sub_menu = file_menu.addMenu('&Game Level')
+        change_level_sub_menu.addAction(beginner_level_action)
+        change_level_sub_menu.addAction(intermediate_level_action)
+        change_level_sub_menu.addAction(expert_level_action)
+
+        # Add other actions in file menu after game level.
+        file_menu.addAction(view_leaderboard_action)
+
+        # Add seperator (visible line) before showing exit.
+        file_menu.addSeparator().setText("Alignment")
+        file_menu.addAction(exit_game_action)
+
+        # Add actions (sub menus) for help menu.
+        help_menu.addAction(about_game_action)
+        help_menu.addAction(game_help_action)
+
+    def change_game_level(self, change_level):
+        """
+            This function helps in changing game level
+            When user clicks on change game level from File menu
+            this function will change height and width of grid.
+        """
+        file_object = open("Level.txt", "w")
+        file_object.write(str(change_level))
+        file_object.close()
+        current_game_level = change_level
+
+        if change_level == DifficultyLevel.BeginnerLevel:
+            grid_length = GridSize.BeginnerLength
+            grid_width = GridSize.BeginnerWidth
+
+        elif change_level == DifficultyLevel.IntermediateLevel:
+            grid_length = GridSize.IntermediateLength
+            grid_width = GridSize.IntermediateWidth
+
+        elif change_level == DifficultyLevel.ExpertLevel:
+            grid_length = GridSize.ExpertLength
+            grid_width = GridSize.ExpertWidth
+
+        self.close()
+        self.__init__(grid_length, grid_width)
+
+
 def main():
     """
     This is the main function.
     :return: None
     """
     app = QtGui.QApplication(sys.argv)
-    game_ui = GameUI(10, 20)
+    file_object = open("Level.txt", "r")
+    level = int(file_object.read())
+    file_object.close()
+
+    # save current game level in global which can be used by others.
+    current_game_level = level
+    (length, width) = get_grid_size(level)
+
+    GameUI(length, width)
     sys.exit(app.exec_())
+
 
 if __name__ == '__main__':
     main()
