@@ -31,22 +31,26 @@ def insertnewscore(level, player_name, score):
     file_data = file_handle.readlines()
     file_handle.close()
 
+    line_to_add = str(player_name).ljust(30) + str(score).ljust(10)
+
     if file_data == []:
         # if currently no data in file, insert new data as the first data at position 1
-        file_data.insert(0, "1" + '\t' + player_name + "\t" + str(score) + '\n')
+        line_to_add = "1".ljust(10) + line_to_add
+        file_data.insert(0, line_to_add + '\n')
     else:
         # find the correct position for new data based on score.
         # Insert new data at its correct position
         for data in file_data:
             index = index + 1
-            if score > data.split('\t')[2]:
-                file_data.insert(index - 1, str(index) + '\t' + player_name\
-                                 + "\t" + str(score) + '\n')
+            temp_score = data.split()[len(data.split()) - 1]
+            if score > temp_score:
+                line_to_add = str(index).ljust(10) + line_to_add
+                file_data.insert(index - 1, line_to_add + '\n')
                 break
         else:
             # Add the score at the end
-            file_data.insert(index, str(index + 1) + '\t' + player_name\
-                             + "\t" + str(score) + '\n')
+            line_to_add = str(index+1).ljust(10) + line_to_add
+            file_data.insert(index, line_to_add + '\n')
 
     # Write all data back in file
     file_handle = open(file_name, "w+")

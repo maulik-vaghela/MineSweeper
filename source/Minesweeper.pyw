@@ -143,11 +143,11 @@ class BoardUI(QtGui.QWidget):
         self.timer.start(1000)
 
     def handle_left_click(self):
-        '''
+        """
         This function handles the left click action on each of the grid cell.
         It will also handle the actions required
         :return: None
-        '''
+        """
         if not self.game_in_progress:
             return
         sender = self.sender()
@@ -169,7 +169,7 @@ class BoardUI(QtGui.QWidget):
             col = cell[1]
             cell_property = self.board.getcellproperty(row, col)
             if cell_property == CellProperty.Empty:
-                self.button_array[row][col].setIcon(QtGui.QIcon())
+                self.button_array[row][col].setIcon(QtGui.QIcon("icons/OpenedSquare.png"))
             elif cell_property == CellProperty.Mine:
                 # Game over
                 for row in range(self.rows):
@@ -333,7 +333,7 @@ class GameUI(QtGui.QMainWindow):
             level_string = "Beginner level"
         else:
             level_string = "Intermediate level"
-        leaderboard = "Rank\tName\tScore\n"
+        leaderboard = "Rank".ljust(10) + "Player Name".ljust(30) + "Score".ljust(10) + '\n'
         for score in top_scores:
             leaderboard = leaderboard + score
         QtGui.QMessageBox.about(self, "Leaderboard for " + level_string, leaderboard)
