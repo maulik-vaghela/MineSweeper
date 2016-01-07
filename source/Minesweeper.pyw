@@ -56,9 +56,10 @@ class BoardUI(QtGui.QWidget):
         self.button_array = [[QtGui.QPushButton() \
                          for col in range(self.cols)] for row in range(self.rows)]
         self.game_in_progress = True
+        self.first_click = True
         self.timer = QtCore.QTimer()
         self.cell_grid_layout = QtGui.QGridLayout()
-        self.remainingtime = 999
+        self.time = 0
 
         for row in range(self.rows):
             for col in range(self.cols):
@@ -96,7 +97,7 @@ class BoardUI(QtGui.QWidget):
         self.time_lcd = QtGui.QLCDNumber(3)
         self.time_lcd.setSegmentStyle(QtGui.QLCDNumber.Flat)
         self.time_lcd.setStyleSheet("background-color:black; color:red")
-        self.time_lcd.display(self.remainingtime)
+        self.time_lcd.display(self.time)
         status_widget_layout.addWidget(self.time_lcd)
 
         main_layout = QtGui.QVBoxLayout()
@@ -105,15 +106,17 @@ class BoardUI(QtGui.QWidget):
 
         self.setLayout(main_layout)
         self.timer.timeout.connect(self.timer_change)
-        self.timer.start(1000)
 
     def timer_change(self):
         """
         This function updates the timer lcd
         :return: None
         """
-        self.remainingtime -= 1
-        self.time_lcd.display(self.remainingtime)
+        if self.time < 999:
+            self.time += 1
+            self.time_lcd.display(self.time)
+        else:
+            self.timer.stop()
 
     def resetgrid(self):
         """
@@ -125,6 +128,7 @@ class BoardUI(QtGui.QWidget):
         self.button_array = [[QtGui.QPushButton() \
                          for col in range(self.cols)] for row in range(self.rows)]
         self.game_in_progress = True
+        self.first_click = True
         for row in range(self.rows):
             for col in range(self.cols):
                 self.button_array[row][col].setFixedSize(self.cell_size, self.cell_size)
@@ -138,9 +142,8 @@ class BoardUI(QtGui.QWidget):
                 self.cell_grid_layout.addWidget(self.button_array[row][col], row, col)
         self.mines_lcd.display(str(self.remainingminecount))
         self.status_button.setIcon(QtGui.QIcon("icons/smiley1.ico"))
-        self.remainingtime = 999
-        self.time_lcd.display(self.remainingtime)
-        self.timer.start(1000)
+        self.time = 0
+        self.time_lcd.display(self.time)
 
     def handle_left_click(self):
         """
@@ -150,6 +153,9 @@ class BoardUI(QtGui.QWidget):
         """
         if not self.game_in_progress:
             return
+        if self.first_click:
+            self.first_click = False
+            self.timer.start(1000)
         sender = self.sender()
         row = 0
         col = 0
@@ -160,7 +166,7 @@ class BoardUI(QtGui.QWidget):
             else:
                 continue
             break
-        print 'Received left click:', row, ',', col
+        # print 'Received left click:', row, ',', col
         celllist = self.board.opencell(row, col)
         if celllist == []:
             return
@@ -206,7 +212,7 @@ class BoardUI(QtGui.QWidget):
             player_name = QtGui.QInputDialog.getText(self, "Name Please !!",\
                                                          "Enter your name for leader board:")
             # TODO: Replace 1 with the time taken by the end user.
-            LeaderBoard.insertnewscore(CURRENT_GAME_LEVEL, player_name[0], 999 - self.remainingtime)
+            LeaderBoard.insertnewscore(CURRENT_GAME_LEVEL, player_name[0], self.time)
             self.status_button.setIcon(QtGui.QIcon("icons/smiley.ico"))
             print "You have won the game"
 
@@ -217,6 +223,9 @@ class BoardUI(QtGui.QWidget):
         """
         if not self.game_in_progress:
             return
+        if self.first_click:
+            self.first_click = False
+            self.timer.start(1000)
         sender = self.sender()
         row = 0
         col = 0
@@ -227,7 +236,7 @@ class BoardUI(QtGui.QWidget):
             else:
                 continue
             break
-        print 'Received right click:', row, ',', col
+        # print 'Received right click:', row, ',', col
         status = self.board.getcellstatus(row, col)
         if status == CellStatus.Opened:
             return
@@ -325,7 +334,6 @@ class GameUI(QtGui.QMainWindow):
         :return: None
         """
         top_scores = LeaderBoard.gettopscorerslist(CURRENT_GAME_LEVEL)
-        print top_scores
         level_string = ""
         if CURRENT_GAME_LEVEL == DifficultyLevel.ExpertLevel:
             level_string = "Expert level"
@@ -334,8 +342,13 @@ class GameUI(QtGui.QMainWindow):
         else:
             level_string = "Intermediate level"
         leaderboard = "Rank".ljust(10) + "Player Name".ljust(30) + "Score".ljust(10) + '\n'
+        print leaderboard,
+        rank = 1
         for score in top_scores:
+            score = str(rank).ljust(10) + score
+            print score,
             leaderboard = leaderboard + score
+            rank = rank + 1
         QtGui.QMessageBox.about(self, "Leaderboard for " + level_string, leaderboard)
 
     def add_menu_bar(self):
