@@ -25,7 +25,7 @@ def insertnewscore(level, player_name, score):
     elif level == DifficultyLevel.ExpertLevel:
         file_name = "Expert.txt"
     else:
-        print "Exception"
+        #print "Exception"
         return
     file_handle = open(file_name, "a+")
     file_data = file_handle.readlines()

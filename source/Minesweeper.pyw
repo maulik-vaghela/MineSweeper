@@ -205,7 +205,7 @@ class BoardUI(QtGui.QWidget):
                 self.button_array[row][col].setIcon(QtGui.QIcon("icons/8.png"))
 
         game_status = self.board.continuegame()
-        print 'Game Status:', game_status
+        #print 'Game Status:', game_status
         if game_status == GameStatus.GameWon:
             self.timer.stop()
             self.game_in_progress = False
@@ -214,7 +214,7 @@ class BoardUI(QtGui.QWidget):
             # TODO: Replace 1 with the time taken by the end user.
             LeaderBoard.insertnewscore(CURRENT_GAME_LEVEL, player_name[0], self.time)
             self.status_button.setIcon(QtGui.QIcon("icons/smiley.ico"))
-            print "You have won the game"
+            #print "You have won the game"
 
     def handle_right_click(self):
         """
@@ -342,11 +342,11 @@ class GameUI(QtGui.QMainWindow):
         else:
             level_string = "Intermediate level"
         leaderboard = "Rank".ljust(10) + "Player Name".ljust(30) + "Score".ljust(10) + '\n'
-        print leaderboard,
+        #print leaderboard,
         rank = 1
         for score in top_scores:
             score = str(rank).ljust(10) + score
-            print score,
+            #print score,
             leaderboard = leaderboard + score
             rank = rank + 1
         QtGui.QMessageBox.about(self, "Leaderboard for " + level_string, leaderboard)

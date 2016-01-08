@@ -52,13 +52,13 @@ class Board(object):
 
         # Update the Cell Property based on the mine list in the board
         for i in range(self.total_mine_count):
-            row = mine_list[i] / self.columns
+            row = mine_list[i] // self.columns
             column = mine_list[i] % self.columns
             self.cell_property[row][column] = CellProperty.Mine
 
         # Update Adjacent Count in neighboruing cells of a cell which has mines
         for i in range(self.total_mine_count):
-            row = mine_list[i] / self.columns
+            row = mine_list[i] // self.columns
             column = mine_list[i] % self.columns
             if (row-1 >= 0) and (column-1 >= 0):
                 if self.cell_property[row-1][column-1] != CellProperty.Mine:
@@ -205,7 +205,7 @@ class Board(object):
         if self.cell_property[self.last_clicked_row][self.last_clicked_column] == CellProperty.Mine:
             return GameStatus.GameLost
 
-        print 'Remaining mine count:', self.current_mine_count
+        #print 'Remaining mine count:', self.current_mine_count
         for row in range(self.rows):
             for col in range(self.columns):
                 if self.cell_property[row][col] == CellProperty.Mine:
