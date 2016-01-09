@@ -2,8 +2,64 @@
 This module implements the Board class for minesweeper implementation.
 """
 
-from random import sample
-from BoardEnums import CellProperty, CellStatus, GameStatus
+import random
+
+"""
+This file defines the various enums which will be shared by different modules.
+"""
+
+class CellStatus(object):
+    """
+    CellState -
+    0: Closed
+    1: Opened
+    2: Marked as mine
+    3: Marked as suspected mine
+    """
+    Closed = 0
+    Opened = 1
+    MarkedAsMine = 2
+    MarkedAsSuspectedMine = 3
+
+    def __init__(self):
+        pass
+
+class CellProperty(object):
+    """
+    CellProperty -
+    -1: Mine
+    0: Empty
+    1-8: AdjacentMineCount
+    """
+    Mine = -1
+    Empty = 0
+    MineCountOne = 1
+    MineCountTwo = 2
+    MineCountThree = 3
+    MineCountFour = 4
+    MineCountFive = 5
+    MineCountSix = 6
+    MineCountSeven = 7
+    MineCountEight = 8
+
+    def __init__(self):
+        pass
+
+class GameStatus(object):
+    """
+    GameStatus -
+    0: GameLost (When user clicked cell is a mine)
+    1: GameNotComplete
+    2: GameWon (When user has marked all mines properly and opened all remaining cells)
+    """
+    Lost = 0
+    InProgress = 1
+    Won = 2
+
+    def __init__(self):
+        pass
+
+
 
 class Board(object):
     """
@@ -24,17 +80,7 @@ class Board(object):
         self.last_clicked_row = -1
         self.last_clicked_column = -1
 
-        # Initialize the cell status to undefined.
-        self.cell_status = []
-        for row in range(rows):
-            self.cell_status.append([CellStatus.UndefinedStatus \
-                                     for column in range(columns)])
-
-        # Initialize the cell property to undefined.
-        self.cell_property = []
-        for row in range(rows):
-            self.cell_property.append([CellProperty.UndefinedProperty \
-                                       for column in range(columns)])
+        
         self.createboard()
 
     def createboard(self):
@@ -42,13 +88,12 @@ class Board(object):
         Initialize the Board status and property with Closed and Empty resp.
         :return: None
         """
-        for row in range(self.rows):
-            for column in range(self.columns):
-                self.cell_status[row][column] = CellStatus.Closed
-                self.cell_property[row][column] = CellProperty.Empty
+        self.cell_status = [[CellStatus.Closed for col in range(self.columns)] for row in range(self.rows)]
+        self.cell_property = [[CellProperty.Empty for col in range(self.columns)] for row in range(self.rows)]
+           
 
         # Use random sample function to get a position list to place mines randomly
-        mine_list = sample(range(self.rows * self.columns), self.total_mine_count)
+        mine_list = random.sample(range(self.rows * self.columns), self.total_mine_count)
 
         # Update the Cell Property based on the mine list in the board
         for i in range(self.total_mine_count):
@@ -56,7 +101,7 @@ class Board(object):
             column = mine_list[i] % self.columns
             self.cell_property[row][column] = CellProperty.Mine
 
-        # Update Adjacent Count in neighboruing cells of a cell which has mines
+        # Update Adjacent Count in neighbouring cells of a cell which has mines
         for i in range(self.total_mine_count):
             row = mine_list[i] // self.columns
             column = mine_list[i] % self.columns
@@ -93,13 +138,14 @@ class Board(object):
         :param column: Column of the cell
         :return: List of cells affected and to be updated
         """
-        cell_list = []
-        if (row < 0) or (row >= self.rows) or (column < 0) or (column >= self.columns):
-            return cell_list
+        assert (row >= 0 and row <= self.rows and column >= 0 and column <= self.columns)
 
-        # if cell status is already opened or suspected mine it can not be opened??
+        cell_list = []       
+
+        # if cell status is already opened or marked as mine or suspected mine, ignore 
         if (self.cell_status[row][column] == CellStatus.Opened) or \
-            (self.cell_status[row][column] == CellStatus.MarkedAsMine):
+            (self.cell_status[row][column] == CellStatus.MarkedAsMine) or \
+            (self.cell_status[row][column] == CellStatus.MarkedAsSuspectedMine):
             return cell_list
 
         #set the Cell Status to Opened and add it to CellList to be returned
@@ -141,35 +187,34 @@ class Board(object):
         :param status: ::CellStatus enum value to be set
         :return: None
         """
-        if (row < 0) or (row >= self.rows) or (column < 0) or (column >= self.columns):
-            return CellStatus.UndefinedStatus
+        assert (row >= 0 and row <= self.rows and column >= 0 and column <= self.columns)
 
-        # for MarkedAsMine cell the valid state is only MarkedAsSuspectedMine
+        # Only state transitions noted below are allowed. Illegal state transtion requests are ignored
+        # MarkedAsMine -> MarkedAsSuspectedMine
+        # MarkedAsSuspectedMine -> Closed
+        # Closed -> [Opened, MarkedAsMine] 
+
         if self.cell_status[row][column] == CellStatus.MarkedAsMine:
-            if status != CellStatus.MarkedAsSuspectedMine:
-                return CellStatus.UndefinedStatus
-
-        # for MarkedAsSuspectedMine cell the valid states are Open or close
+            if status == CellStatus.MarkedAsSuspectedMine:
+                self.cell_status[row][column] = CellStatus.MarkedAsSuspectedMine
+                self.current_mine_count = self.current_mine_count + 1
+                return
+        
         if self.cell_status[row][column] == CellStatus.MarkedAsSuspectedMine:
-            if not((status == CellStatus.Closed) or (status == CellStatus.Opened)):
-                return CellStatus.UndefinedStatus
+            if status == CellStatus.Closed:
+                self.cell_status[row][column] = CellStatus.Closed
+                return
 
-        # if Status that going to set is MarkedAsMine then
-        # the earlier state of cell should be Closed
-        if status == CellStatus.MarkedAsMine:
-            if self.cell_status[row][column] != CellStatus.Closed:
-                return CellStatus.UndefinedStatus
+        if self.cell_status[row][column] == CellStatus.Closed:
+            if status == CellStatus.MarkedAsMine:
+                self.cell_status[row][column] = CellStatus.MarkedAsMine
+                self.current_mine_count = self.current_mine_count - 1
+                return
+            elif status == CellStatus.Opened:
+                self.cell_status[row][column] = CellStatus.Opened
+                return
 
-        # set the New cell status
-        self.cell_status[row][column] = status
-
-        # increase or decrease current mine count based on New Set Status
-        if status == CellStatus.MarkedAsMine:
-            self.current_mine_count = self.current_mine_count - 1
-        elif status == CellStatus.MarkedAsSuspectedMine:
-            self.current_mine_count = self.current_mine_count + 1
-
-        return status
+        
 
     def getcellstatus(self, row, column):
         """
@@ -178,8 +223,7 @@ class Board(object):
         :param column: Column of the cell
         :return: ::CellStatus enum value
         """
-        if (row < 0) or (row >= self.rows) or (column < 0) or (column >= self.columns):
-            return CellStatus.UndefinedStatus
+        assert (row >= 0 and row <= self.rows and column >= 0 and column <= self.columns)
         return self.cell_status[row][column]
 
     def getcellproperty(self, row, column):
@@ -189,21 +233,19 @@ class Board(object):
         :param column: Column of the cell
         :return: ::CellProperty enum value
         """
-        if (row < 0) or (row >= self.rows) or (column < 0) or (column >= self.columns):
-            return CellProperty.UndefinedProperty
-
+        assert (row >= 0 and row <= self.rows and column >= 0 and column <= self.columns)
         return self.cell_property[row][column]
 
-    def continuegame(self):
+    def getGameStatus(self):
         """
         This function returns GameStatus enum value as per the current status.
         :return: GameWon, GameNotComplete or GameLost
         """
         if (self.last_clicked_row == -1) and (self.last_clicked_column == -1):
-            return GameStatus.GameNotComplete
+            return GameStatus.InProgress
 
         if self.cell_property[self.last_clicked_row][self.last_clicked_column] == CellProperty.Mine:
-            return GameStatus.GameLost
+            return GameStatus.Lost
 
         #print 'Remaining mine count:', self.current_mine_count
         for row in range(self.rows):
@@ -211,9 +253,9 @@ class Board(object):
                 if self.cell_property[row][col] == CellProperty.Mine:
                     continue
                 if self.cell_status[row][col] == CellStatus.Closed:
-                    return GameStatus.GameNotComplete
+                    return GameStatus.InProgress
 
-        return GameStatus.GameWon
+        return GameStatus.Won
 
     def reset(self):
         """
