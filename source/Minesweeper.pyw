@@ -12,8 +12,6 @@ import os.path
 from PyQt4 import QtCore
 from PyQt4 import QtGui
 
-CURRENT_GAME_LEVEL = 0
-
 class GameLevel(object):
     """
     Class for managing the game level and game parameters
@@ -24,7 +22,7 @@ class GameLevel(object):
 
     # Dict format is Level: (rows, columns, mines)
     GameParamDict = {Beginner: (9, 9, 10), Intermediate:(16, 16, 40), Expert:(16, 30, 99)}
-
+    
     settingsFile = "Minesweeper.ini"
 
     def __init__(self):
@@ -76,6 +74,7 @@ class BoardWidget(QtGui.QWidget):
         self.rows = rows
         self.cols = cols
         self.minecount = minecount
+        self.parent = parent
         self.remainingminecount = self.minecount
         self.cell_size = 25
         self.board = Game.Board(self.rows, self.cols, self.minecount)
@@ -182,6 +181,7 @@ class BoardWidget(QtGui.QWidget):
         if self.first_click:
             self.first_click = False
             self.timer.start(1000)
+
         sender = self.sender()
         row = 0
         col = 0
@@ -235,11 +235,12 @@ class BoardWidget(QtGui.QWidget):
         if game_status == Game.GameStatus.Won:
             self.timer.stop()
             self.game_in_progress = False
-            player_name = QtGui.QInputDialog.getText(self, "Name Please !!",\
-                                                         "Enter your name for leader board:")
-            # TODO: Replace 1 with the time taken by the end user.
-            LeaderBoard.insertnewscore(CURRENT_GAME_LEVEL, player_name[0], self.time)
             self.status_button.setIcon(QtGui.QIcon("icons/smiley.ico"))
+
+            self.parent.postPlayerWinCallback(self.time)
+
+            
+            
             
 
     def handle_right_click(self):
@@ -290,6 +291,7 @@ class MainWindow(QtGui.QMainWindow):
         super(MainWindow, self).__init__(parent)
 
         self.gameLevel = GameLevel()
+        self.leaderBoard = LeaderBoard.LeaderBoard()
         
         (rows, columns, minecount) = self.gameLevel.getGameParams()
 
@@ -313,6 +315,15 @@ class MainWindow(QtGui.QMainWindow):
         self.setCentralWidget(main_widget)
         self.setWindowTitle("Minesweeper")
         self.show()
+
+    def postPlayerWinCallback (self, time):
+        """
+        This function is called when the human player wins the game
+        """
+        player_name = QtGui.QInputDialog.getText(self, "Name Please !!",\
+                                                         "Enter your name for leader board:")
+        
+        self.leaderBoard.insertnewscore(self.gameLevel.getGameLevel(), player_name[0], time)
 
     def about(self):
         """
@@ -364,14 +375,14 @@ class MainWindow(QtGui.QMainWindow):
         This function handles the event of user asking for leaderboard.
         :return: None
         """
-        top_scores = LeaderBoard.gettopscorerslist(CURRENT_GAME_LEVEL)
-        level_string = ""
-        if CURRENT_GAME_LEVEL == GameLevel.Expert:
-            level_string = "Expert level"
-        elif CURRENT_GAME_LEVEL == GameLevel.Beginner:
-            level_string = "Beginner level"
-        else:
-            level_string = "Intermediate level"
+        GameLevelStrDict = {GameLevel.Beginner: "Beginner Level",\
+                            GameLevel.Intermediate: "Intermediate Level", \
+                            GameLevel.Expert: "Expert Level"
+                            }
+        
+        level = self.gameLevel.getGameLevel()
+        top_scores = self.leaderBoard.gettopscorerslist(level)
+        
         leaderboard = "Rank".ljust(10) + "Player Name".ljust(30) + "Score".ljust(10) + '\n'
         
         rank = 1
@@ -380,7 +391,7 @@ class MainWindow(QtGui.QMainWindow):
             
             leaderboard = leaderboard + score
             rank = rank + 1
-        QtGui.QMessageBox.about(self, "Leaderboard for " + level_string, leaderboard)
+        QtGui.QMessageBox.about(self, "Leaderboard for " + GameLevelStrDict[level], leaderboard)
 
     def add_menu_bar(self):
         """
