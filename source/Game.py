@@ -2,12 +2,6 @@
 This module implements the Board class for minesweeper implementation.
 """
 
-import random
-
-"""
-This file defines the various enums which will be shared by different modules.
-"""
-
 class CellStatus(object):
     """
     CellState -
@@ -65,7 +59,7 @@ class Board(object):
     """
     This is the core Board class as per the class diagram
     """
-    def __init__(self, rows, columns, mine_count):
+    def __init__(self, rows, columns, mine_list):
         """
         This is the constructor.
         :param rows: Grid rows
@@ -75,11 +69,11 @@ class Board(object):
         """
         self.rows = rows
         self.columns = columns
-        self.total_mine_count = mine_count
+        self.mine_list = mine_list
+        self.total_mine_count = len(self.mine_list)
         self.current_mine_count = self.total_mine_count
         self.last_clicked_row = -1
         self.last_clicked_column = -1
-
         
         self.createboard()
 
@@ -90,21 +84,15 @@ class Board(object):
         """
         self.cell_status = [[CellStatus.Closed for col in range(self.columns)] for row in range(self.rows)]
         self.cell_property = [[CellProperty.Empty for col in range(self.columns)] for row in range(self.rows)]
-           
+        
 
-        # Use random sample function to get a position list to place mines randomly
-        mine_list = random.sample(range(self.rows * self.columns), self.total_mine_count)
-
-        # Update the Cell Property based on the mine list in the board
-        for i in range(self.total_mine_count):
-            row = mine_list[i] // self.columns
-            column = mine_list[i] % self.columns
-            self.cell_property[row][column] = CellProperty.Mine
+        for minePos in self.mine_list:            
+            self.cell_property[minePos[0]][minePos[1]] = CellProperty.Mine
 
         # Update Adjacent Count in neighbouring cells of a cell which has mines
-        for i in range(self.total_mine_count):
-            row = mine_list[i] // self.columns
-            column = mine_list[i] % self.columns
+        for minePos in self.mine_list:
+            row = minePos[0]
+            column = minePos[1]
             if (row-1 >= 0) and (column-1 >= 0):
                 if self.cell_property[row-1][column-1] != CellProperty.Mine:
                     self.cell_property[row-1][column-1] += 1
@@ -256,14 +244,3 @@ class Board(object):
                     return GameStatus.InProgress
 
         return GameStatus.Won
-
-    def reset(self):
-        """
-        This function resets the board to a fresh instance of game.
-        :return: None
-        """
-        self.current_mine_count = self.total_mine_count
-        self.last_clicked_row = -1
-        self.last_clicked_column = -1
-        self.createboard()
-        return

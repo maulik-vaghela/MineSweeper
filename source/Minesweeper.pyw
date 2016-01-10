@@ -8,6 +8,7 @@ import LeaderBoard
 import sys
 import functools
 import os.path
+import random
 
 from PyQt4 import QtCore
 from PyQt4 import QtGui
@@ -64,6 +65,16 @@ class GameLevel(object):
             return GameLevel.GameParamDict[level]
 
 
+def GenerateMineList(rows, columns, minecount):
+    selectedMineNumbers = random.sample(range(rows * columns), minecount)
+    mine_list = []
+    for mineNumber in selectedMineNumbers:
+        row = mineNumber // columns
+        col = mineNumber % columns
+        mine_list.append((row,col))
+    
+    return mine_list
+
 class BoardWidget(QtGui.QWidget):
     """
     This class implements the cell UI. Each cell is referenced by [row][col]
@@ -72,30 +83,35 @@ class BoardWidget(QtGui.QWidget):
     def __init__(self, rows=10, cols=10, minecount=10, parent=None):
         super(BoardWidget, self).__init__(parent)
         self.rows = rows
-        self.cols = cols
-        self.minecount = minecount
+        self.columns = cols
+        self.minecount = minecount        
         self.parent = parent
         self.remainingminecount = self.minecount
         self.cell_size = 25
-        self.board = Game.Board(self.rows, self.cols, self.minecount)
         self.button_array = [[QtGui.QPushButton() \
-                         for col in range(self.cols)] for row in range(self.rows)]
+                         for col in range(self.columns)] for row in range(self.rows)]
         self.game_in_progress = True
         self.first_click = True
         self.timer = QtCore.QTimer()
-        self.cell_grid_layout = QtGui.QGridLayout()
         self.time = 0
+        
+        self.cell_grid_layout = QtGui.QGridLayout()
+        
 
         for row in range(self.rows):
-            for col in range(self.cols):
+            for col in range(self.columns):
                 self.button_array[row][col].setFixedSize(self.cell_size, self.cell_size)
                 self.button_array[row][col].setIcon(QtGui.QIcon("icons/unopenedsquare.png"))
                 self.button_array[row][col].setIconSize(QtCore.QSize(self.cell_size,\
-                                                                     self.cell_size))
-                self.button_array[row][col].clicked.connect(self.handle_left_click)
+                                                                     self.cell_size))                
+                leftClickLambda = lambda x=row, y=col : self.handleLeftClick (x,y)                
+                self.connect(self.button_array[row][col], QtCore.SIGNAL('clicked()'), leftClickLambda)
+                
+                # 'v' is for chomping the QPoint argument.
+                rightClickLambda = lambda v, x=row, y=col : self.handleRightClick (x,y)
                 self.button_array[row][col].setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-                self.button_array[row][col].customContextMenuRequested.connect(\
-                    self.handle_right_click)
+                self.connect(self.button_array[row][col], QtCore.SIGNAL('customContextMenuRequested(const QPoint&)'), rightClickLambda)
+                
                 self.cell_grid_layout.addWidget(self.button_array[row][col], row, col)
 
         self.cell_grid_layout.setSpacing(0)
@@ -130,9 +146,13 @@ class BoardWidget(QtGui.QWidget):
         main_layout.addLayout(self.cell_grid_layout)
 
         self.setLayout(main_layout)
-        self.timer.timeout.connect(self.timer_change)
+        
+        self.connect(self.timer, QtCore.SIGNAL('timeout()'), self.timerHandler)
 
-    def timer_change(self):
+        self.mine_list = GenerateMineList(self.rows, self.columns, self.minecount)
+        self.board = Game.Board(self.rows, self.columns, self.mine_list)
+
+    def timerHandler(self):
         """
         This function updates the timer lcd
         :return: None
@@ -149,28 +169,28 @@ class BoardWidget(QtGui.QWidget):
         :return: None
         """
         self.remainingminecount = self.minecount
-        self.board.reset()
-        self.button_array = [[QtGui.QPushButton() \
-                         for col in range(self.cols)] for row in range(self.rows)]
         self.game_in_progress = True
         self.first_click = True
+        self.timer.stop()
+        
         for row in range(self.rows):
-            for col in range(self.cols):
-                self.button_array[row][col].setFixedSize(self.cell_size, self.cell_size)
+            for col in range(self.columns):                
                 self.button_array[row][col].setIcon(QtGui.QIcon("icons/unopenedsquare.png"))
                 self.button_array[row][col].setIconSize(QtCore.QSize(self.cell_size,\
                                                                      self.cell_size))
-                self.button_array[row][col].clicked.connect(self.handle_left_click)
-                self.button_array[row][col].setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-                self.button_array[row][col].customContextMenuRequested.connect(\
-                    self.handle_right_click)
-                self.cell_grid_layout.addWidget(self.button_array[row][col], row, col)
+                
         self.mines_lcd.display(str(self.remainingminecount))
         self.status_button.setIcon(QtGui.QIcon("icons/smiley1.ico"))
         self.time = 0
         self.time_lcd.display(self.time)
 
-    def handle_left_click(self):
+        
+        self.mine_list = GenerateMineList(self.rows, self.columns, self.minecount)
+
+        # Create a new board
+        self.board = Game.Board(self.rows, self.columns, self.mine_list)
+
+    def handleLeftClick(self, row, col):
         """
         This function handles the left click action on each of the grid cell.
         It will also handle the actions required
@@ -182,33 +202,25 @@ class BoardWidget(QtGui.QWidget):
             self.first_click = False
             self.timer.start(1000)
 
-        sender = self.sender()
-        row = 0
-        col = 0
-        for row in range(self.rows):
-            for col in range(self.cols):
-                if self.button_array[row][col] == sender:
-                    break
-            else:
-                continue
-            break
-        
         celllist = self.board.opencell(row, col)
+        
         if celllist == []:
             return
+        
         for cell in celllist:
             row = cell[0]
             col = cell[1]
             cell_property = self.board.getcellproperty(row, col)
+            
             if cell_property == Game.CellProperty.Empty:
                 self.button_array[row][col].setIcon(QtGui.QIcon("icons/OpenedSquare.png"))
             elif cell_property == Game.CellProperty.Mine:
-                # Game over
-                for row in range(self.rows):
-                    for col in range(self.cols):
-                        cell_property = self.board.getcellproperty(row, col)
-                        if cell_property == Game.CellProperty.Mine:
-                            self.button_array[row][col].setIcon(QtGui.QIcon("icons/mine.ico"))
+                # Game over. expose all mines
+                for minePos in self.mine_list:
+                    row = minePos[0]
+                    col = minePos[1]
+                    self.button_array[row][col].setIcon(QtGui.QIcon("icons/mine.ico"))
+
                 self.status_button.setIcon(QtGui.QIcon("icons/smiley3.ico"))
                 self.game_in_progress = False
                 self.timer.stop()
@@ -237,13 +249,9 @@ class BoardWidget(QtGui.QWidget):
             self.game_in_progress = False
             self.status_button.setIcon(QtGui.QIcon("icons/smiley.ico"))
 
-            self.parent.postPlayerWinCallback(self.time)
+            self.parent.postUserWinCallback(self.time)
 
-            
-            
-            
-
-    def handle_right_click(self):
+    def handleRightClick(self, row, col):
         """
         This function handles the right click action on grid cell.
         :return: None
@@ -253,16 +261,6 @@ class BoardWidget(QtGui.QWidget):
         if self.first_click:
             self.first_click = False
             self.timer.start(1000)
-        sender = self.sender()
-        row = 0
-        col = 0
-        for row in range(self.rows):
-            for col in range(self.cols):
-                if self.button_array[row][col] == sender:
-                    break
-            else:
-                continue
-            break
         
         status = self.board.getcellstatus(row, col)
         if status == Game.CellStatus.Opened:
@@ -316,7 +314,7 @@ class MainWindow(QtGui.QMainWindow):
         self.setWindowTitle("Minesweeper")
         self.show()
 
-    def postPlayerWinCallback (self, time):
+    def postUserWinCallback (self, time):
         """
         This function is called when the human player wins the game
         """
@@ -474,10 +472,10 @@ class MainWindow(QtGui.QMainWindow):
             When user clicks on change game level from File menu
             this function will start a new game at the new level
         """
-        self.gameLevel.setGameLevel(change_level)
-
-        self.close()
-        self.__init__()
+        if self.gameLevel.getGameLevel() != change_level:
+            self.gameLevel.setGameLevel(change_level)
+            self.close()
+            self.__init__()
 
             
 def main():
