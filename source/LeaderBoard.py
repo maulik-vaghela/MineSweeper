@@ -2,35 +2,36 @@
 This module defines the API related to leaderboard handling.
 """
 
-import Minesweeper
 import os
 import sys
+
+import Minesweeper
 
 class LeaderBoard(object):
     """
     Class for managing the scores
     """
     ScoreFileDict = {Minesweeper.GameLevel.Beginner: "Beginner.txt", \
-        Minesweeper.GameLevel.Intermediate: "Intermediate.txt", \
-        Minesweeper.GameLevel.Expert: "Expert.txt"
-        }
+                    Minesweeper.GameLevel.Intermediate: "Intermediate.txt", \
+                    Minesweeper.GameLevel.Expert: "Expert.txt"
+                    }
 
     def __init__(self):
         pass
-        
+
 
     def insertnewscore(self, level, player_name, score):
         """
         This function will store score (along with other details such as rank and name) in a file,
         corresponding to selected game level in descending order of scores
-    
+
         :param Level: Beginner/Intermediate/Expert
         :param player_name: Player name
         :param score: Score in seconds for the player
         :return: None
         """
         index = 0
-    
+
         file_name = LeaderBoard.ScoreFileDict[level]
         file_handle = open(file_name, "a+")
         file_data = file_handle.readlines()
@@ -39,7 +40,8 @@ class LeaderBoard(object):
         line_to_add = str(player_name).ljust(30) + str(score).ljust(10) + '\n'
 
         if file_data == []:
-            # if currently no data in file, insert new data as the first data at position 1
+            # if currently no data in file, insert new data as the first data
+            # at position 1
             file_data.insert(0, line_to_add)
         else:
             # find the correct position for new data based on score.
@@ -61,7 +63,8 @@ class LeaderBoard(object):
         rank = 1
         for data in file_data:
             # create list to write back data in file.
-            # We want to re-write first column data based on rank calculated here.
+            # We want to re-write first column data based on rank calculated
+            # here.
             file_handle.write(data)
             rank = rank + 1
             if rank > 10:
